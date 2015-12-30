@@ -9,3 +9,6 @@ For that, these papers will be used:
 But, the final goal will be to implement one these methods:
 * Chiu, Y. H., Hong, W. C., Chou, L. P., Ding, J., Yang, B. Y., & Cheng, C. M. (2014, January). A Practical Attack on Patched MIFARE Classic. In Information Security and Cryptology (pp. 150-164). Springer International Publishing.
 * Meijer, C., & Verdult, R. (2015, October). Ciphertext-only cryptanalysis on hardened Mifare Classic cards. In Proceedings of the 22nd ACM SIGSAC Conference on Computer and Communications Security (pp. 18-30). ACM.
+
+
+Feel free to participate. ;)
