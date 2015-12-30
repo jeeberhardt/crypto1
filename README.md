@@ -2,7 +2,7 @@
 
 An attempt to implement CRYPTO1 algorithm of Mifare classic NFC card in python.
 
-The implementation will be based on these papers:
+For that, these papers will be used:
 * de Koning Gans, G., Hoepman, J. H., & Garcia, F. D. (2008). A practical attack on the MIFARE Classic. In Smart Card Research and Advanced Applications (pp. 267-282). Springer Berlin Heidelberg.
 * Garcia, F. D., de Koning Gans, G., Muijrers, R., Van Rossum, P., Verdult, R., Schreur, R. W., & Jacobs, B. (2008). Dismantling MIFARE classic. In Computer Security-ESORICS 2008 (pp. 97-114). Springer Berlin Heidelberg.
 
