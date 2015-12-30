@@ -1,6 +1,6 @@
 # crypto1
 
-An attempt to implement CRYPTO1 algorithm of mifare classic NFC card in python.
+An attempt to implement CRYPTO1 algorithm of Mifare classic NFC card in python.
 
 The final goal will be to implement one these methods (in python with pynfc):
 * Chiu, Y. H., Hong, W. C., Chou, L. P., Ding, J., Yang, B. Y., & Cheng, C. M. (2014, January). A Practical Attack on Patched MIFARE Classic. In Information Security and Cryptology (pp. 150-164). Springer International Publishing.
