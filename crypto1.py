@@ -6,7 +6,9 @@ class Crypto1:
 	Implementation of the crypto1 Mifare algorithm 
 	"""
 	def __init__(self, key):
-		""" The LSFR is iniatlized with key sector """
+		""" The LSFR is iniatlized with the key sector 
+		after received the auth command from the reader
+		"""
 		self.lfsr = key
 
 	def xor_bytes(self, a, b):
