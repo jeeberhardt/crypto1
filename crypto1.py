@@ -32,7 +32,8 @@ class Crypto1:
 
     def prng(self, lfsr):
         """
-        Apply 16-bit LFSR
+        Apply 16-bit LFSR. 
+        I am sure we can do better, but for simplicity we use string
         """
         output = ""
 
