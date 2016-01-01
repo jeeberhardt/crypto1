@@ -87,12 +87,16 @@ class Crypto1:
         # Return nonce, it will be sent to the reader
         return self.nonce
 
-    def initialize_lfsr(self):
+    def cipher(self, nonce = None):
         """
         After initialization of the nonce Nt, we can feed the 
         48-bit LFSR with the uid tag, the key sector and 
         the nonce Nt
         """
+
+        # We use the initial nonce Nt
+        if nonce is None:
+            nonce = self.nonce
 
 class Tag(Crypto1):
     """ 
@@ -113,8 +117,23 @@ key = 0xa0b1c2d3f4
 initial_lfsr = 0x104A
 tick_clock = 16*10
 
+# Create a tag
 card = Tag(uid, key)
-Nt = card.initialize_nonce(initial_lfsr, tick_clock)
-
-print hex(Nt)
 print card
+
+# Generate nonce Nt
+Nt = card.initialize_nonce(initial_lfsr, tick_clock)
+print hex(Nt)
+
+"""
+Now the nonce Nt is send to the reader, it will be use 
+to feed its cipher, plus the uid and the key sector, like 
+the tag did with its own. The 48-bit LFSR will be in the 
+same state for both, the tag and the reader. Like that, they
+can communicate with each other correctly.
+"""
+
+# Synchronize the 48-bit LFSR with uid, key and Nonce Nt
+card.cipher()
+
+
