@@ -35,7 +35,6 @@ class Crypto1:
         Apply 16-bit LFSR. 
         I am sure we can do better, but for simplicity we use string
         """
-
         for _ in xrange(tick_clock):
 
             output = ""
