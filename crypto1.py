@@ -3,23 +3,30 @@
 
 def int_to_binstr(a):
     """
-    Convert int number to binary data
+    Convert int number to binary string
     """
     size = len(hex(a)[2:]) * 4
     return (bin(a)[2:]).zfill(size)
 
 def binstr_to_int(a):
     """
-    Convert binary str to int
+    Convert binary string to int
     """
     return int(a, 2)
+
+def binstr_to_hex(a):
+    """
+    Convert binary string to hex
+    """
+    return hex(binstr_to_int(a))
 
 class Crypto1:
     """ 
     Implementation of the crypto1 Mifare algorithm 
     """
     def __init__(self, key):
-        """ The LSFR is iniatlized with the key sector 
+        """ 
+        The LSFR is iniatlized with the key sector 
         after received the auth command from the reader
         """
         self.lfsr = key
@@ -32,10 +39,10 @@ class Crypto1:
 
     def prng(self, lfsr, tick_clock = 1):
         """
-        Apply 16-bit LFSR. 
-        I am sure we can do better, but for simplicity we use string
+        Apply 16-bit LFSR. At least one bit must be different than 0.
+        I am sure we can do better, but for simplicity and clarity we use string.
         """
-        for _ in xrange(tick_clock):
+        for _ in xrange(0, tick_clock, 16):
 
             output = ""
 
@@ -80,6 +87,13 @@ class Crypto1:
         # Return nonce, it will be sent to the reader
         return self.nonce
 
+    def initialize_lfsr(self):
+        """
+        After initialization of the nonce Nt, we can feed the 
+        48-bit LFSR with the uid tag, the key sector and 
+        the nonce Nt
+        """
+
 class Tag(Crypto1):
     """ 
     Create a Mifare tag with only one sector 
@@ -97,7 +111,7 @@ class Tag(Crypto1):
 uid = 0xc2a82df4
 key = 0xa0b1c2d3f4
 initial_lfsr = 0x104A
-tick_clock = 1
+tick_clock = 16*10
 
 card = Tag(uid, key)
 Nt = card.initialize_nonce(initial_lfsr, tick_clock)
