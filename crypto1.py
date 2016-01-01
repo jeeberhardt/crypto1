@@ -37,12 +37,12 @@ class Crypto1:
         assert a.bit_length() != b.bit_length(), "bit length are not equal"
         return hex(a ^ b)
 
-    def prng(self, lfsr, tick_clock = 1):
+    def prng(self, lfsr, clock_tick = 1):
         """
         Apply 16-bit LFSR. At least one bit must be different than 0.
         I am sure we can do better, but for simplicity and clarity we use string.
         """
-        for _ in xrange(0, tick_clock, 16):
+        for _ in xrange(0, clock_tick, 16):
 
             output = ""
 
@@ -59,7 +59,7 @@ class Crypto1:
 
         return output
 
-    def initialize_nonce(self, initial_lfsr, tick_clock = 1):
+    def initialize_nonce(self, initial_lfsr, clock_tick = 1):
         """ 
         Function to generate initial Nt nonce. The 16 bit LFSR is 
         iniatialized during the authentification protocol.
@@ -70,7 +70,7 @@ class Crypto1:
         initial_lfsr = int_to_binstr(initial_lfsr)
 
         # We generate the first part of the nonce (16 bit length)
-        nonce = self.prng(initial_lfsr, tick_clock)
+        nonce = self.prng(initial_lfsr, clock_tick)
 
         """
         From paper "Dismantling Mifare Classic": Sinces nonces 
@@ -79,7 +79,7 @@ class Crypto1:
         """
 
         # Now we generate the second half based on the first part
-        nonce += self.prng(nonce, tick_clock)
+        nonce += self.prng(nonce, clock_tick)
 
         # We convert it
         self.nonce = binstr_to_int(nonce)
@@ -91,9 +91,9 @@ class Crypto1:
         """
         After initialization of the nonce Nt, we can feed the 
         48-bit LFSR with the uid tag, the key sector and 
-        the nonce Nt
+        the nonce Nt. After the initialization, the 48-bit LFSR,
+        we will be feed with suc(Nt).
         """
-
         # We use the initial nonce Nt
         if nonce is None:
             nonce = self.nonce
@@ -115,14 +115,14 @@ class Tag(Crypto1):
 uid = 0xc2a82df4
 key = 0xa0b1c2d3f4
 initial_lfsr = 0x104A
-tick_clock = 16*10
+clock_tick = 16*10
 
 # Create a tag
 card = Tag(uid, key)
 print card
 
 # Generate nonce Nt
-Nt = card.initialize_nonce(initial_lfsr, tick_clock)
+Nt = card.initialize_nonce(initial_lfsr, clock_tick)
 print hex(Nt)
 
 """
