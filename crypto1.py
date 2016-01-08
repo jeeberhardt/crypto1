@@ -76,8 +76,6 @@ class Crypto1:
         After the initialization, the 48-bit LFSR, we will be 
         feed with suc(Nt). """
 
-        # The feedback bits generated from g(x) are not taken in account
-
         if self.lfsr is None:
             """ We directly put the input in the lsfr
             Generally, at the beginning, the input correspond
@@ -85,7 +83,10 @@ class Crypto1:
             self.lfsr = input
         else:
             """ We update the state of the lfsr by
-            xoring the lfsr with the input """ 
+            xoring the lfsr with the input. For the moment,
+            the feedback bits generated from g(x) are 
+            not taken in account. But it should be at the 
+            initialization step only ... """ 
             self.lfsr = self.lfsr ^ input
 
 class Tag(Crypto1):
