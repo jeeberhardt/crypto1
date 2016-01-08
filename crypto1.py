@@ -26,11 +26,6 @@ class Crypto1:
         self.lfsr = None
         self.nonce = None
 
-    def xor_bytes(self, a, b):
-        """ XOR function """
-        assert a.bit_length() != b.bit_length(), "bit length are not equal"
-        return hex(a ^ b)
-
     def prng(self, lfsr, clock_tick = 1):
         """ Apply 16-bit LFSR. At least one bit must be different than 0.
         I am sure we can do better, but for simplicity and clarity we use string. """
