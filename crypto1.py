@@ -81,7 +81,8 @@ class Crypto1:
         After the initialization, the 48-bit LFSR, we will be 
         feed with suc(Nt). """
 
-        # If the lsfr state is not iniatilized
+        # The feedback bits generated from g(x) are not taken in account
+
         if self.lfsr is None:
             """ We directly put the input in the lsfr
             Generally, at the beginning, the input correspond
@@ -117,11 +118,13 @@ print card
 Nt = card.generate_nonce(initial_lfsr, clock_tick)
 print "Nt {0}".format(hex(Nt))
 
-""" Now the nonce Nt is send to the reader, it will be use 
+""" Now the tag send the nonce Nt to the reader, it will be use 
 to feed its cipher, plus the uid and the key sector, like 
 the tag did with its own. The 48-bit LFSR will be in the 
 same state for both, the tag and the reader. Like that, they
-can communicate with each other correctly. """
+can communicate with each other correctly. The Nonce Nt
+will be send in the reverse order, the least significant 
+bit first (LSB)(on the left) """
 
 # Synchronize the 48-bit LFSR with uid, key and Nonce Nt
 print "LFSR state {0}".format(card.lfsr)
