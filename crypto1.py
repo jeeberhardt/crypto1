@@ -1,18 +1,18 @@
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
 
-def int_to_binstr(a):
+def int_to_bitstr(a):
     """ Convert int number to binary string """
     size = len(hex(a)[2:]) * 4
     return (bin(a)[2:]).zfill(size)
 
-def binstr_to_int(a):
+def bitstr_to_int(a):
     """ Convert binary string to int """
     return int(a, 2)
 
-def binstr_to_hex(a):
+def bitstr_to_hex(a):
     """ Convert binary string to hex """
-    return hex(binstr_to_int(a))
+    return hex(bitstr_to_int(a))
 
 def int_to_hex(a):
     """ Convert int to hex """
@@ -52,7 +52,7 @@ class Crypto1:
         The generating polynomial is x16 + x14 + x13 + x11 + 1.
         How LFSR works: https://www.youtube.com/watch?v=sKUhFpVxNWc """
         # Initialize 16-bit LFSR with a "random number"
-        initial_lfsr = int_to_binstr(initial_lfsr)
+        initial_lfsr = int_to_bitstr(initial_lfsr)
 
         # We generate the first part of the nonce (16 bit length)
         nonce = self.prng(initial_lfsr, clock_tick)
@@ -65,7 +65,7 @@ class Crypto1:
         nonce += self.prng(nonce, clock_tick)
 
         # We convert it
-        self.nonce = binstr_to_int(nonce)
+        self.nonce = bitstr_to_int(nonce)
 
         # Return nonce, it will be sent to the reader
         return self.nonce
@@ -88,6 +88,33 @@ class Crypto1:
             not taken in account. But it should be at the 
             initialization step only ... """ 
             self.lfsr = self.lfsr ^ input
+
+    def fa(self, a, b, c, d):
+        """ Apply filter function A.
+        f_a = ((a or b) xor (a and d)) xor (c and ((a xor b) or d)) """
+        return ((a | b) ^ (a & d) ^ (c & (a ^ b) | d))
+
+    def fb(self, a, b, c, d):
+        """ Apply filter function B
+        f_b = ((a and b) or c) xor (a xor b) and (c or d) """
+        return ((a & b) | c) ^ (a ^ b) & (c | d)
+
+    def fc(self, a, b, c, d, e):
+        """ Apply filter function C
+        f_c = (a or ((b or e) and (d xor e))) xor ((a xor 
+        (b and d)) and ((c xor d) and (a and e))) """
+        return (a | ((b | e) & (d ^ e))) ^ ((a ^ (b & d)) & ((c ^ d) & (a & e)))
+
+    def cipher_feedback(self):
+        """ Apply the feedback function on the cipher. The
+        position 0,5,9,10,12,14,15,17,19,24,25,27,29,35
+        39,41,42,43 are xored together. The content is shifted
+        to the left by one position. The MSB (left) is removed
+        and the new bit is added on the LSB side (right). """
+
+    def generate_keystream(self):
+        """ In order to generate the keystream the filter 
+        functions are applied on the lfsr state """
 
 class Tag(Crypto1):
     """ Create a Mifare tag with only one sector """
