@@ -33,49 +33,58 @@ class Crypto1:
          generator is defined by x0 xor x2 xor x3 xor x5. """
         return str(int(lfsr[0],2) ^ int(lfsr[2],2) ^ int(lfsr[3],2) ^ int(lfsr[5],2))
 
-    def suc_nonce(self):
+    def get_initial_nonce(self):
+        """ Function to generate the initial nonce based
+        on the 16 bits LFSR initial state. Since the nonce
+        is 32 bits and the LFSR is only 16 bits, the first 
+        half of the nonce (or the initial prng state) will
+        define the second half. The 16 bits LFSR shifts to
+        the left. The new feedback bit is added on the right
+        and the bit on the left is discarded. 
+        LFSR: https://www.youtube.com/watch?v=sKUhFpVxNWc"""
+
+        #First we will initiate the nonce with the prng.
+        bit_nonce = int_to_bitstr(self.prng, 16)
+
+        """ Then we generate the second part by taking only 
+        the last 16 bits until we have 32 bits in total. """
+        for i in range(16):
+            bit_nonce += self.prng_feedback(bit_nonce[i:i+16])
+
+        """ The new state of the prng will be the last 16 bits
+        of the nonce, because we discarded 16 bits during the
+        feedback loop. The initial nonce has 32 bits now. """
+        bit_prng = bit_nonce[16:]
+
+        self.prng = bitstr_to_int(bit_prng)
+        self.nonce = bitstr_to_int(bit_nonce)
+
+        return self.nonce
+
+    def suc_nonce(self, nonce = None):
         """ Function to generate the successor nonce based 
-        on a 16 bit LFSR. Since the nonce is 32 bit and the
-        LFSR is only 16 bit, the first half of the nonce 
-        will define the second half. Every clock tick the 
-        LFSR shifts to the left. A new feedback bit is added 
-        on the right and the bit on the left is discarded. 
-        How LFSR works: https://www.youtube.com/watch?v=sKUhFpVxNWc """
+        on the second half (16 bits long) of the nonce. """
 
-        # if nonce already exists, we generate the suc(Nt)
-        if self.nonce:
+        # if we don't provide a nonce. We will use the self one
+        if nonce is None:
+            nonce = self.nonce
 
-            """ We convert the nonce and the prng in bit 
-            in order to work on them. """
-            prng = int_to_bitstr(self.prng, 16)
-            nonce = int_to_bitstr(self.nonce, 32)
+        # We convert the nonce in bit in order to work on it
+        bit_nonce = int_to_bitstr(nonce, 32)
+        bit_prng = bit_nonce[16,:]
 
-            """ Generate the feedback bit based on the nonce's 
-            second half, because the last 16 bits of the nonce is
-            identical to the 16 bits prng state. """
-            fbit = self.prng_feedback(prng)
+        """ Generate the feedback bit based on the nonce's 
+        second half, because the last 16 bits of the nonce is
+        identical to the 16 bits prng state. """
+        fbit = self.prng_feedback(bit_prng)
 
-            # The left bit is discarded and the feedback bit is added
-            nonce = nonce[1:] + fbit
-            # The same for the prng state
-            prng = prng[1:] + fbit
-        else:
-            """ If the nonce doesn't exist. First we will initiate
-            the nonce with the prng. This will be the first part. """
-            nonce = int_to_bitstr(self.prng, 16)
+        # The left bit is discarded and the feedback bit is added
+        nonce = bit_nonce[1:] + fbit
+        # The same for the prng state
+        prng = bit_prng[1:] + fbit
 
-            """ Then we generate the second by taking only the
-            last 16 bits until we have 32 bits in total. """
-            for i in range(16):
-                nonce += self.prng_feedback(nonce[i:i+16])
-
-            """ The new state of the prng will be the last 16 bits
-            of the nonce, because we discarded 16 bits during the
-            feedback loop. The initial nonce has 32 bits now. """
-            prng = nonce[16:]
-
-        self.prng = bitstr_to_int(prng)
-        self.nonce = bitstr_to_int(nonce)
+        self.prng = bitstr_to_int(bit_prng)
+        self.nonce = bitstr_to_int(bit_nonce)
 
         # Return nonce, it will be sent to the reader
         return self.nonce
@@ -102,7 +111,7 @@ class Crypto1:
     def fa(self, a, b, c, d):
         """ Apply filter function A.
         f_a = ((a or b) xor (a and d)) xor (c and ((a xor b) or d)) """
-        return ((a | b) ^ (a & d) ^ (c & (a ^ b) | d))
+        return ((a | b) ^ (a & d)) ^ (c & ((a ^ b) | d))
 
     def fb(self, a, b, c, d):
         """ Apply filter function B
@@ -126,7 +135,7 @@ class Crypto1:
         """ In order to generate the keystream the filter 
         functions are applied on the lfsr state """
 
-class Tag(Crypto1):
+class Mifare(Crypto1):
     """ Create a Mifare tag with only one sector """
     def __init__(self, uid, key, initial_prng):
         """ A tag has an uid, a key and the crypto1"""
@@ -141,16 +150,21 @@ class Tag(Crypto1):
 
 uid = 0xc2a82df4
 key = 0xa0b1c2d3f4
-initial_prng = 0x104A #0001000001001010
 
-# Create a tag
-card = Tag(uid, key, initial_prng)
-print card
+print "\nCreation of the card and the reader"
+
+# Create a tag with a uid, a key sector and initial prng state 
+tag = Mifare(uid, key, initial_prng = 0x104A)
+# Create a tag with uid (from the selected tag), key sector and initial prng state
+reader = Mifare(uid, key, initial_prng = 0x108A)
+
+print "Tag state           : {0}".format(tag)
+print "Reader state        : {0}".format(reader)
 
 """ Generate nonce the initial nonce Nt. If we 
 repeat the same operation 65535 times, we will 
 obtain the same initial Nonce. """
-Nt = card.suc_nonce()
+Nt = tag.get_initial_nonce()
 
 """ Now the tag send the nonce Nt to the reader, it will be use 
 to feed its cipher, plus the uid and the key sector, like 
@@ -160,10 +174,20 @@ can communicate with each other correctly. The Nonce Nt
 will be send in the reverse order, the least significant 
 bit first (LSB)(on the left) """
 
-# Synchronize the 48-bit LFSR with uid, key and Nonce Nt
-print "Cipher state {0}".format(hex(card.cipher))
-card.update_cipher(uid ^ key ^ Nt)
-print "Cipher state {0}".format(int_to_hex(card.cipher))
+# Feed the 48-bits tag and reader cipher with (uid xor Nt)
+print "\nUpdate cipher state (reader - tag) - uid xor Nt"
+tag_old_cipher = int_to_hex(tag.cipher)
+tag.update_cipher(uid ^ Nt)
+print "Tag cipher state    : {0} --> {1}".format(tag_old_cipher, int_to_hex(tag.cipher))
 
+reader_old_cipher = int_to_hex(reader.cipher)
+reader.update_cipher(uid ^ Nt)
+print "Reader cipher state : {0} --> {1}".format(reader_old_cipher, int_to_hex(reader.cipher))
 
-""" Now it is time to generate the first keystream ks1. """
+print "\nUpdate cipher state (reader) - Nr"
+# Now the reader picks its own nonce Nr
+Nr = reader.get_initial_nonce()
+# And update its cipher with it
+reader_old_cipher = int_to_hex(reader.cipher)
+reader.update_cipher(Nr)
+print "Reader cipher state : {0} --> {1}".format(reader_old_cipher, int_to_hex(reader.cipher))
