@@ -65,29 +65,32 @@ class Crypto1:
         """ Function to generate the successor nonce based 
         on the second half (16 bits long) of the nonce. """
 
-        # if we don't provide a nonce. We will use the self one
+        # if we don't provide a nonce. We will use the internal one
         if nonce is None:
             nonce = self.nonce
 
         # We convert the nonce in bit in order to work on it
         bit_nonce = int_to_bitstr(nonce, 32)
-        bit_prng = bit_nonce[16,:]
 
         """ Generate the feedback bit based on the nonce's 
         second half, because the last 16 bits of the nonce is
         identical to the 16 bits prng state. """
-        fbit = self.prng_feedback(bit_prng)
+        fbit = self.prng_feedback(bit_nonce[16,:])
 
         # The left bit is discarded and the feedback bit is added
         nonce = bit_nonce[1:] + fbit
-        # The same for the prng state
-        prng = bit_prng[1:] + fbit
 
-        self.prng = bitstr_to_int(bit_prng)
-        self.nonce = bitstr_to_int(bit_nonce)
+        # We will update the internal nonce/prng to the suc(nonce/prng)
+        if nonce is None:
 
-        # Return nonce, it will be sent to the reader
-        return self.nonce
+            # The internal prng is updated with the second part of the nonce
+            self.prng = bitstr_to_int(bit_nonce[16,:])
+            self.nonce = bitstr_to_int(bit_nonce)
+
+            # Return nonce, it will be sent to the reader
+            return self.nonce
+        else:
+            return bitstr_to_int(nonce)
 
     def update_cipher(self, input):
         """ After initialization of the nonce Nt, we can feed the 
@@ -176,18 +179,19 @@ bit first (LSB)(on the left) """
 
 # Feed the 48-bits tag and reader cipher with (uid xor Nt)
 print "\nUpdate cipher state (reader - tag) - uid xor Nt"
-tag_old_cipher = int_to_hex(tag.cipher)
+old = int_to_hex(tag.cipher)
 tag.update_cipher(uid ^ Nt)
-print "Tag cipher state    : {0} --> {1}".format(tag_old_cipher, int_to_hex(tag.cipher))
-
-reader_old_cipher = int_to_hex(reader.cipher)
+print "Tag cipher state    : {0} --> {1}".format(old, int_to_hex(tag.cipher))
+old = int_to_hex(reader.cipher)
 reader.update_cipher(uid ^ Nt)
-print "Reader cipher state : {0} --> {1}".format(reader_old_cipher, int_to_hex(reader.cipher))
+print "Reader cipher state : {0} --> {1}".format(old, int_to_hex(reader.cipher))
 
 print "\nUpdate cipher state (reader) - Nr"
 # Now the reader picks its own nonce Nr
 Nr = reader.get_initial_nonce()
 # And update its cipher with it
-reader_old_cipher = int_to_hex(reader.cipher)
+old = int_to_hex(reader.cipher)
 reader.update_cipher(Nr)
-print "Reader cipher state : {0} --> {1}".format(reader_old_cipher, int_to_hex(reader.cipher))
+print "Reader cipher state : {0} --> {1}".format(old, int_to_hex(reader.cipher))
+
+print "\nGet the suc2(Nt) (reader)"
