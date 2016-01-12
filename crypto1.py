@@ -20,52 +20,51 @@ def int_to_hex(a):
 
 class Crypto1:
     """ Implementation of the crypto1 Mifare algorithm """
-    def __init__(self):
+    def __init__(self, key, initial_prng):
         """ The LSFR is iniatlized with the key sector 
         after received the auth command from the reader """
-        self.lfsr = None
+        self.cipher = key
+        self.prng = initial_prng
         self.nonce = None
 
-    def prng(self, lfsr, clock_tick = 1):
-        """ Apply 16-bit LFSR. At least one bit must be different than 0.
-        I am sure we can do better, but for simplicity and clarity we use string. """
-        for _ in xrange(0, clock_tick, 16):
+    def prng_feedback(self, lfsr):
+        """ Apply the feedback function of the pseudo-random
+         generator is defined by x0 xor x2 xor x3 xor x5. """
+        return str(int(lfsr[0],2) ^ int(lfsr[2],2) ^ int(lfsr[3],2) ^ int(lfsr[5],2))
 
-            output = ""
-
-            for _ in xrange(16):
-                bit = str(int(lfsr[0],2) ^ int(lfsr[10],2) ^ int(lfsr[12],2) 
-                          ^ int(lfsr[13],2) ^ int(lfsr[15],2))
-
-                # We insert the new bit at the beginning 
-                lfsr = bit + lfsr
-                # And we take the last bit that we add to the nonce
-                output += lfsr[-1]
-                # And we remove it
-                lfsr = lfsr[0:-1]
-
-        return output
-
-    def generate_nonce(self, initial_lfsr, clock_tick = 1):
-        """ Function to generate initial Nt nonce. The 16 bit LFSR is 
-        iniatialized during the authentification protocol.
-        The generating polynomial is x16 + x14 + x13 + x11 + 1.
+    def suc_nonce(self):
+        """ Function to generate the successor nonce based 
+        on a 16 bit LFSR. Since the nonce is 32 bit and the
+        LFSR is only 16 bit, the first half of the nonce 
+        will define the second half. Every clock tick the 
+        LFSR shifts to the left. A new feedback bit is added 
+        on the right and the bit on the left is discarded. 
         How LFSR works: https://www.youtube.com/watch?v=sKUhFpVxNWc """
-        # Initialize 16-bit LFSR with a "random number"
-        initial_lfsr = int_to_bitstr(initial_lfsr)
 
-        # We generate the first part of the nonce (16 bit length)
-        nonce = self.prng(initial_lfsr, clock_tick)
+        # if nonce already exists, we generate the suc(Nt)
+        if self.nonce:
+            # Generate the feedback bit based on the nonce's second half
+            fbit = self.prng_feedback(int_to_bitstr(self.prng))
 
-        """ From paper "Dismantling Mifare Classic": Sinces nonces 
-        are 32 bits long and the LFSR has a 16 bit state, 
-        the first half of Nt determines the second half. """
+            # The left bit is discarded and the feedback bit is added
+            self.nonce = bitstr_to_int(int_to_bitstr(self.nonce)[1:] + fbit)
+            # The same for the prng state
+            self.prng = bitstr_to_int(int_to_bitstr(self.prng)[1:] + fbit)
+        else:
+            """ If the nonce doesn't exist. First we will initiate
+            the nonce with the prng. This will be the first part. """
+            nonce = int_to_bitstr(self.prng)
 
-        # Now we generate the second half based on the first part
-        nonce += self.prng(nonce, clock_tick)
+            """ Then we generate the second by taking only the
+            last 16 bits until we have 32 bits in total. """
+            for i in range(16):
+                nonce += self.prng_feedback(nonce[i:i+16])
 
-        # We convert it
-        self.nonce = bitstr_to_int(nonce)
+            """ The new state of the prng will be the last 16 bits
+            of the nonce, because we discarded 16 bits during the
+            feedback loop. The initial nonce has 32 bits now. """
+            self.prng = bitstr_to_int(nonce[16:])
+            self.nonce = bitstr_to_int(nonce)
 
         # Return nonce, it will be sent to the reader
         return self.nonce
@@ -76,18 +75,18 @@ class Crypto1:
         After the initialization, the 48-bit LFSR, we will be 
         feed with suc(Nt). """
 
-        if self.lfsr is None:
+        if self.cipher is None:
             """ We directly put the input in the lsfr
             Generally, at the beginning, the input correspond
             to the xoring of the uid, key and nonce Nt """
-            self.lfsr = input
+            self.cipher = input
         else:
             """ We update the state of the lfsr by
             xoring the lfsr with the input. For the moment,
             the feedback bits generated from g(x) are 
             not taken in account. But it should be at the 
             initialization step only ... """ 
-            self.lfsr = self.lfsr ^ input
+            self.cipher = self.cipher ^ input
 
     def fa(self, a, b, c, d):
         """ Apply filter function A.
@@ -118,28 +117,27 @@ class Crypto1:
 
 class Tag(Crypto1):
     """ Create a Mifare tag with only one sector """
-    def __init__(self, uid, keyA):
+    def __init__(self, uid, key, initial_prng):
         """ A tag has an uid, a key and the crypto1"""
         self.uid = uid
-        self.keyA = keyA
-        Crypto1.__init__(self)
+        self.key = key
+        Crypto1.__init__(self, key, initial_prng)
 
     def __str__(self):
         """ Informations about the tag """
-        return "UID {0}, Key {1}".format(hex(self.uid), hex(self.keyA))
+        return "UID {0}, Key {1}, Cipher {2}, PRNG {3}".format(hex(self.uid), 
+            hex(self.key), hex(self.cipher), hex(self.prng))
 
 uid = 0xc2a82df4
 key = 0xa0b1c2d3f4
-initial_lfsr = 0x104A #0001000001001010
-clock_tick = 16
+initial_prng = 0x104A #0001000001001010
 
 # Create a tag
-card = Tag(uid, key)
+card = Tag(uid, key, initial_prng)
 print card
 
 # Generate nonce Nt
-Nt = card.generate_nonce(initial_lfsr, clock_tick)
-print "Nt {0}".format(hex(Nt))
+Nt = card.suc_nonce()
 
 """ Now the tag send the nonce Nt to the reader, it will be use 
 to feed its cipher, plus the uid and the key sector, like 
@@ -150,7 +148,7 @@ will be send in the reverse order, the least significant
 bit first (LSB)(on the left) """
 
 # Synchronize the 48-bit LFSR with uid, key and Nonce Nt
-print "LFSR state {0}".format(card.lfsr)
+print "Cipher state {0}".format(hex(card.cipher))
 card.update_cipher(uid ^ key ^ Nt)
-print "LFSR state {0}".format(int_to_hex(card.lfsr))
+print "Cipher state {0}".format(int_to_hex(card.cipher))
 
