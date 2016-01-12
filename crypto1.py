@@ -1,9 +1,10 @@
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
 
-def int_to_bitstr(a):
+def int_to_bitstr(a, size = None):
     """ Convert int number to binary string """
-    size = len(hex(a)[2:]) * 4
+    if size is None:
+        size = len(hex(a)[2:]) * 4
     return (bin(a)[2:]).zfill(size)
 
 def bitstr_to_int(a):
@@ -43,17 +44,25 @@ class Crypto1:
 
         # if nonce already exists, we generate the suc(Nt)
         if self.nonce:
-            # Generate the feedback bit based on the nonce's second half
-            fbit = self.prng_feedback(int_to_bitstr(self.prng))
+
+            """ We convert the nonce and the prng in bit 
+            in order to work on them. """
+            prng = int_to_bitstr(self.prng, 16)
+            nonce = int_to_bitstr(self.nonce, 32)
+
+            """ Generate the feedback bit based on the nonce's 
+            second half, because the last 16 bits of the nonce is
+            identical to the 16 bits prng state. """
+            fbit = self.prng_feedback(prng)
 
             # The left bit is discarded and the feedback bit is added
-            self.nonce = bitstr_to_int(int_to_bitstr(self.nonce)[1:] + fbit)
+            nonce = nonce[1:] + fbit
             # The same for the prng state
-            self.prng = bitstr_to_int(int_to_bitstr(self.prng)[1:] + fbit)
+            prng = prng[1:] + fbit
         else:
             """ If the nonce doesn't exist. First we will initiate
             the nonce with the prng. This will be the first part. """
-            nonce = int_to_bitstr(self.prng)
+            nonce = int_to_bitstr(self.prng, 16)
 
             """ Then we generate the second by taking only the
             last 16 bits until we have 32 bits in total. """
@@ -63,8 +72,10 @@ class Crypto1:
             """ The new state of the prng will be the last 16 bits
             of the nonce, because we discarded 16 bits during the
             feedback loop. The initial nonce has 32 bits now. """
-            self.prng = bitstr_to_int(nonce[16:])
-            self.nonce = bitstr_to_int(nonce)
+            prng = nonce[16:]
+
+        self.prng = bitstr_to_int(prng)
+        self.nonce = bitstr_to_int(nonce)
 
         # Return nonce, it will be sent to the reader
         return self.nonce
@@ -136,7 +147,9 @@ initial_prng = 0x104A #0001000001001010
 card = Tag(uid, key, initial_prng)
 print card
 
-# Generate nonce Nt
+""" Generate nonce the initial nonce Nt. If we 
+repeat the same operation 65535 times, we will 
+obtain the same initial Nonce. """
 Nt = card.suc_nonce()
 
 """ Now the tag send the nonce Nt to the reader, it will be use 
@@ -152,3 +165,5 @@ print "Cipher state {0}".format(hex(card.cipher))
 card.update_cipher(uid ^ key ^ Nt)
 print "Cipher state {0}".format(int_to_hex(card.cipher))
 
+
+""" Now it is time to generate the first keystream ks1. """
